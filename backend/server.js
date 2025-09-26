@@ -25,6 +25,10 @@ const errorHandler = require('./middleware/errorHandler');
 const { updateAllUserScores } = require('./utils/scoring');
 
 const app = express();
+app.get('/', (req, res) => {
+  res.json({ message: 'Waste Tracker API is running!' });
+});
+
 
 // Connect to Database
 connectMongoDB();
@@ -42,6 +46,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Rate limiting
+app.set('trust proxy', 1); // trust first proxy
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100
