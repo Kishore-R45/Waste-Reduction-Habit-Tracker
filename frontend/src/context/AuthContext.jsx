@@ -13,24 +13,31 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  // Initialize user safely from localStorage
   const [user, setUser] = useState(() => {
-    // Load user from localStorage on startup
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      const savedUser = localStorage.getItem('user');
+      return savedUser && savedUser !== 'undefined'
+        ? JSON.parse(savedUser)
+        : null;
+    } catch (error) {
+      console.error('Invalid user JSON in localStorage:', error);
+      localStorage.removeItem('user');
+      return null;
+    }
   });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
   }, []);
 
+  // Validate token & refresh user state
   const checkAuth = async () => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        // Attach token to axios headers
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
         const response = await api.get('/api/auth/me');
         setUser(response.data.user);
         localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -44,17 +51,14 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
+  // Handle login
   const login = async (email, password) => {
     try {
       const response = await api.post('/api/auth/login', { email, password });
       const { token, user } = response.data;
 
-      // Save token & user
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-
-      // Attach token for future requests
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       setUser(user);
       toast.success('Login successful!');
@@ -66,16 +70,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Handle register
   const register = async (name, email, password) => {
     try {
-      const response = await api.post('/api/auth/register', { name, email, password });
+      const response = await api.post('/api/auth/register', {
+        name,
+        email,
+        password,
+      });
       const { token, user } = response.data;
 
-      // Save token & user
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       setUser(user);
       toast.success('Registration successful!');
@@ -87,10 +93,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Handle logout
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    delete api.defaults.headers.common['Authorization'];
     setUser(null);
     toast.success('Logged out successfully');
   };
